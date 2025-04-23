@@ -5,7 +5,7 @@ import math
 
 # Function to fetch weather data
 def fetch_weather_data(lat, lon):
-    weather_url = "http://api.agromonitoring.com/agro/1.0/weather/forecast"
+    weather_url = "http://api.agromonitoring.com/agro/1.0/weather"
     params = {
         'lat': lat,
         'lon': lon,
