@@ -1,4 +1,4 @@
-import streamlit as 
+import streamlit as st
 import requests
 from datetime import datetime
 import math
