@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 from datetime import datetime, timedelta
 import math
-
+from streamlit_geolocation import streamlit_geolocation
 # Crop Kc values (for example purposes, you can add more crops and their values)
 kc_values = {
     "Cotton": [0.3, 1.15, 0.45],  # [Initial, Mid-Season, Late-Season]
@@ -73,33 +73,26 @@ def calculate_irrigation_requirement(et_0, kc_value):
     irrigation_requirement = et_0 * kc_value
     return irrigation_requirement
 
-# Function to fetch location using IP-based geolocation (works on Streamlit Cloud)
-def get_location():
-    try:
-        # Fetch the user's location using ipinfo.io
-        response = requests.get("https://ipinfo.io/json")
-        data = response.json()
-        lat, lon = map(float, data["loc"].split(","))
-        return lat, lon
-    except Exception as e:
-        st.error(f"⚠️ Could not fetch location using IP-based geolocation: {str(e)}")
-        return None, None
-
 # Streamlit UI to take latitude and longitude as input
 st.title("🌾 Crop Irrigation and Growth Tracker 🌦️💧")
 
-# Try fetching location based on IP
-lat, lon = get_location()
+# Option to automatically fetch the location or manually input lat and lon
+use_device_location = st.checkbox("Use my device's location 📍", value=True)
 
-# If IP-based geolocation works, display the location, otherwise fall back to manual input
-if lat and lon:
-    st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
+if use_device_location:
+    # Use the streamlit-geolocation package to fetch latitude and longitude
+    location = streamlit_geolocation()
+    
+    if location != "No Location Info":
+        lat = location['latitude']
+        lon = location['longitude']
+        st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
+    else:
+        st.warning("❌ Please allow access to your device's location.")
 else:
-    st.warning("❌ Unable to get location, please input your location manually.")
-
-# Option to manually input lat and lon as a fallback if geolocation is not available
-lat_input = st.number_input("Enter Latitude 📍", value=lat if lat else 35.0, format="%.6f")
-lon_input = st.number_input("Enter Longitude 📍", value=lon if lon else 139.0, format="%.6f")
+    # Input for Latitude and Longitude if not using device location
+    lat = st.number_input("Enter Latitude 📍", value=35.0, format="%.6f")
+    lon = st.number_input("Enter Longitude 📍", value=139.0, format="%.6f")
 
 # Crop Selection
 crop_type = st.selectbox("🌱 Select Crop Type 🌾", ["Cotton", "Redgram", "Wheat", "Rice", "Corn"])
@@ -125,8 +118,8 @@ else:
 st.write(f"🌿 **Current Kc Value for {crop_type}**: {kc}")
 
 # Fetch weather and soil data based on user input
-weather_data = fetch_weather_data(lat_input, lon_input)
-soil_data = fetch_soil_data(lat_input, lon_input)
+weather_data = fetch_weather_data(lat, lon)
+soil_data = fetch_soil_data(lat, lon)
 
 # Process and display weather data
 if weather_data:
