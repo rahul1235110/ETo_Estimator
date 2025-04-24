@@ -88,15 +88,16 @@ def get_location():
 # Streamlit UI to take latitude and longitude as input
 st.title("🌾 Crop Irrigation and Growth Tracker 🌦️💧")
 
-# Use IP-based geolocation to fetch latitude and longitude
+# Try fetching location based on IP
 lat, lon = get_location()
 
+# If IP-based geolocation works, display the location, otherwise fall back to manual input
 if lat and lon:
     st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
 else:
     st.warning("❌ Unable to get location, please input your location manually.")
 
-# Option to manually input lat and lon as a fallback
+# Option to manually input lat and lon as a fallback if geolocation is not available
 lat_input = st.number_input("Enter Latitude 📍", value=lat if lat else 35.0, format="%.6f")
 lon_input = st.number_input("Enter Longitude 📍", value=lon if lon else 139.0, format="%.6f")
 
