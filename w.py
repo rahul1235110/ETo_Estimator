@@ -1,9 +1,8 @@
-pip uninstall streamlit_geolocation
 import streamlit as st
 import requests
 from datetime import datetime, timedelta
 import math
-from streamlit_geolocation import streamlit_geolocation
+
 # Crop Kc values (for example purposes, you can add more crops and their values)
 kc_values = {
     "Cotton": [0.3, 1.15, 0.45],  # [Initial, Mid-Season, Late-Season]
@@ -77,23 +76,9 @@ def calculate_irrigation_requirement(et_0, kc_value):
 # Streamlit UI to take latitude and longitude as input
 st.title("🌾 Crop Irrigation and Growth Tracker 🌦️💧")
 
-# Option to automatically fetch the location or manually input lat and lon
-use_device_location = st.checkbox("Use my device's location 📍", value=True)
-
-if use_device_location:
-    # Use the streamlit-geolocation package to fetch latitude and longitude
-    location = streamlit_geolocation()
-    
-    if location != "No Location Info":
-        lat = location['latitude']
-        lon = location['longitude']
-        st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
-    else:
-        st.warning("❌ Please allow access to your device's location.")
-else:
-    # Input for Latitude and Longitude if not using device location
-    lat = st.number_input("Enter Latitude 📍", value=35.0, format="%.6f")
-    lon = st.number_input("Enter Longitude 📍", value=139.0, format="%.6f")
+# Option to manually input lat and lon instead of automatic location fetching
+lat = st.number_input("Enter Latitude 📍", value=35.0, format="%.6f")
+lon = st.number_input("Enter Longitude 📍", value=139.0, format="%.6f")
 
 # Crop Selection
 crop_type = st.selectbox("🌱 Select Crop Type 🌾", ["Cotton", "Redgram", "Wheat", "Rice", "Corn"])
