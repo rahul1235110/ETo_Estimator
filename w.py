@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 from datetime import datetime, timedelta
 import math
-from streamlit_geolocation import streamlit_geolocation
+
 # Crop Kc values (for example purposes, you can add more crops and their values)
 kc_values = {
     "Cotton": [0.3, 1.15, 0.45],  # [Initial, Mid-Season, Late-Season]
@@ -76,23 +76,21 @@ def calculate_irrigation_requirement(et_0, kc_value):
 # Streamlit UI to take latitude and longitude as input
 st.title("🌾 Crop Irrigation and Growth Tracker 🌦️💧")
 
-# Option to automatically fetch the location or manually input lat and lon
-use_device_location = st.checkbox("Use my device's location 📍", value=True)
+# Option to manually input lat and lon instead of using geolocation
+st.write("📍 Please manually enter your location (latitude and longitude):")
 
-if use_device_location:
-    # Use the streamlit-geolocation package to fetch latitude and longitude
-    location = streamlit_geolocation()
-    
-    if location != "No Location Info":
-        lat = location['latitude']
-        lon = location['longitude']
-        st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
-    else:
-        st.warning("❌ Please allow access to your device's location.")
-else:
-    # Input for Latitude and Longitude if not using device location
-    lat = st.number_input("Enter Latitude 📍", value=35.0, format="%.6f")
-    lon = st.number_input("Enter Longitude 📍", value=139.0, format="%.6f")
+# Input for Latitude and Longitude
+lat = st.number_input("Enter Latitude 📍", value=35.0, format="%.6f")
+lon = st.number_input("Enter Longitude 📍", value=139.0, format="%.6f")
+
+# Input for Max Water Holding Capacity (Field Capacity)
+field_capacity = st.number_input(
+    "💧 Enter Max Water Holding Capacity (Field Capacity) as a fraction (e.g., 0.50 for 50%)",
+    value=0.50,
+    min_value=0.10,
+    max_value=1.0,
+    step=0.01
+)
 
 # Crop Selection
 crop_type = st.selectbox("🌱 Select Crop Type 🌾", ["Cotton", "Redgram", "Wheat", "Rice", "Corn"])
@@ -138,10 +136,8 @@ if soil_data:
     soil_moisture = soil_data['moisture']  # Soil moisture from the API (as a fraction)
     st.markdown(f"💧 **Current Soil Moisture from API**: {soil_moisture * 100:.2f} %")
 
-    soil_moisture_max = 0.50  # Example max soil moisture (field capacity)
-
     # Calculate AET based on soil moisture and ET₀
-    aet = calculate_aet(et_0, soil_moisture, soil_moisture_max)
+    aet = calculate_aet(et_0, soil_moisture, field_capacity)  # Using user input field_capacity
     st.markdown(f"💧 **Estimated AET (Actual Evapotranspiration)**: {aet:.2f} mm/day")
 
     # Calculate irrigation requirement based on crop stage and Kc value
