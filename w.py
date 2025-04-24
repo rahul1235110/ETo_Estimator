@@ -1,3 +1,4 @@
+pip uninstall streamlit_geolocation
 import streamlit as st
 import requests
 from datetime import datetime, timedelta
