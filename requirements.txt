@@ -1,1 +1,2 @@
 git+https://github.com/steffanic/streamlit_js_eval.git
+streamlit_js_eval
