@@ -84,7 +84,10 @@ st.title("🌾 Crop Irrigation and Growth Tracker 🌦️💧")
 # Use the streamlit_js_eval component to fetch the user's location
 if st.button('Get My Location'):
     # Run the JavaScript code to get the location
-    location = streamlit_js_eval('navigator.geolocation.getCurrentPosition(function(position){ return {latitude: position.coords.latitude, longitude: position.coords.longitude}; });')
+    location = streamlit_js_eval(
+        "navigator.geolocation.getCurrentPosition(function(position){ return {latitude: position.coords.latitude, longitude: position.coords.longitude}; });",
+        label="Geolocation Fetcher"  # Add a label to the streamlit_js_eval component
+    )
 
     if location != "No Location Info":
         lat = location['latitude']
@@ -113,4 +116,67 @@ crop_type = st.selectbox("🌱 Select Crop Type 🌾", ["Cotton", "Redgram", "Wh
 # Input for Crop Sowing Date
 sowing_date = st.date_input("📅 Enter Sowing Date", datetime.today())
 
-# Calculate Crop Growth
+# Calculate Crop Growth Stage
+stage, days_since_sowing = calculate_crop_stage(str(sowing_date))
+
+st.write(f"🌱 **Crop Stage**: {stage}")
+st.write(f"📅 **Days Since Sowing**: {days_since_sowing} days")
+
+# Display Kc Values for the Selected Crop and Stage
+current_kc = kc_values[crop_type]
+if stage == "🌱 Initial Stage":
+    kc = current_kc[0]
+elif stage == "🌾 Mid-Season Stage":
+    kc = current_kc[1]
+else:
+    kc = current_kc[2]
+
+st.write(f"🌿 **Current Kc Value for {crop_type}**: {kc}")
+
+# Calculate PWP (Permanent Wilting Point) based on field capacity
+pwp = field_capacity / 2.5
+st.write(f"💧 **Calculated PWP (Permanent Wilting Point)**: {pwp:.2f}")
+
+# Run button to trigger the calculations
+if st.button('Run Calculations'):
+
+    # Fetch weather and soil data based on user input
+    weather_data = fetch_weather_data(lat, lon)
+    soil_data = fetch_soil_data(lat, lon)
+
+    # Process and display weather data
+    if weather_data:
+        st.markdown("### 🌤️ **Weather Forecast Data**:")
+        temp_max = kelvin_to_celsius(weather_data[0]['main']['temp_max'])
+
+        # Calculate ET₀ using the Jensen-Haise equation
+        et_0 = jensen_haise_et0(T_max=temp_max)
+
+        st.markdown(f"🌡️ **Max Temperature (T_max):** {temp_max:.2f} °C")
+        st.markdown(f"🌞 **Estimated ET₀ (from Jensen-Haise Method):** {et_0:.2f} mm/day")
+
+    # Process and display soil data
+    if soil_data:
+        st.markdown("### 🌱 **Soil Data**:")
+        soil_moisture = soil_data['moisture']  # Soil moisture from the API (as a fraction)
+        st.markdown(f"💧 **Current Soil Moisture from API**: {soil_moisture * 100:.2f} %")
+
+        soil_moisture_max = 0.50  # Example max soil moisture (field capacity)
+
+        # Calculate AET based on soil moisture and ET₀
+        aet = calculate_aet(et_0, soil_moisture, soil_moisture_max, pwp)
+        st.markdown(f"💧 **Estimated AET (Actual Evapotranspiration)**: {aet:.2f} mm/day")
+
+        # Calculate irrigation requirement based on crop stage and Kc value
+        irrigation = calculate_irrigation_requirement(et_0, kc)
+        st.markdown(f"💧 **Recommended Irrigation Requirement for {crop_type}**: {irrigation:.2f} mm/day")
+
+        # Now, adjust irrigation recommendation based on soil moisture and rain forecast
+        soil_moisture_example = soil_moisture
+        rain_forecast = 0.0  # mm (from weather forecast API)
+
+        # Adjust irrigation recommendation
+        adjusted_irrigation = irrigation * (1 - soil_moisture_example)  # This accounts for soil moisture already present
+        adjusted_irrigation = adjusted_irrigation - rain_forecast  # Subtract any rainfall expected
+
+        st.markdown(f"🌧️ **Adjusted Irrigation Requirement (considering soil moisture and rainfall)**: {adjusted_irrigation:.2f} mm/day")
