@@ -1,8 +1,8 @@
 import streamlit as st
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import math
-from streamlit_js_eval import streamlit_js_eval
+from streamlit_geolocation import streamlit_geolocation
 
 # Crop Kc values (for example purposes, you can add more crops and their values)
 kc_values = {
@@ -81,25 +81,12 @@ def calculate_irrigation_requirement(et_0, kc_value):
 # Streamlit UI to take latitude and longitude as input
 st.title("🌾 Crop Irrigation and Growth Tracker 🌦️💧")
 
-# Use the streamlit_js_eval component to fetch the user's location
-if st.button('Get My Location'):
-    # Run the JavaScript code to get the location
-    location = streamlit_js_eval(
-        "navigator.geolocation.getCurrentPosition(function(position){ return {latitude: position.coords.latitude, longitude: position.coords.longitude}; });",
-        label="Geolocation Fetcher"  # This label is required as an argument
-    )
+# Option to manually input lat and lon instead of using geolocation
+st.write("📍 Please manually enter your location (latitude and longitude):")
 
-    if location != "No Location Info":
-        lat = location['latitude']
-        lon = location['longitude']
-        st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
-    else:
-        st.warning("❌ Please allow access to your device's location.")
-
-# Option to enter location manually if geolocation fails
-else:
-    lat = st.number_input("Enter Latitude 📍", value=35.0, format="%.6f")
-    lon = st.number_input("Enter Longitude 📍", value=139.0, format="%.6f")
+# Input for Latitude and Longitude
+lat = st.number_input("Enter Latitude 📍", value=35.0, format="%.6f")
+lon = st.number_input("Enter Longitude 📍", value=139.0, format="%.6f")
 
 # Input for Max Water Holding Capacity (Field Capacity)
 field_capacity = st.number_input(
