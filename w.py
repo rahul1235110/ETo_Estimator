@@ -1,6 +1,9 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import requests
 from datetime import datetime
+from bokeh.models.widgets import Button
+from bokeh.models import CustomJS
+from streamlit_bokeh_events import streamlit_bokeh_events
 
 # Crop Kc values (for example purposes, you can add more crops and their values)
 kc_values = {
@@ -72,38 +75,35 @@ def calculate_irrigation_requirement(et_0, kc_value):
     irrigation_requirement = et_0 * kc_value
     return irrigation_requirement
 
-# Custom HTML + JS to fetch geolocation
-def get_geolocation():
-    # HTML + JS code to get geolocation
-    html = """
-    <script type="text/javascript">
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                const location = { lat: lat, lon: lon };
-                window.parent.postMessage(location, "*");
-            });
-        } else {
-            alert("Geolocation is not supported by this browser.");
-        }
-    </script>
-    """
-    components.html(html)
-
 # Streamlit UI to take latitude and longitude as input
 st.title("🌾 Crop Irrigation and Growth Tracker 🌦️💧")
 
-# Option to automatically fetch the location or manually input lat and lon
-use_device_location = st.checkbox("Use my device's location 📍", value=True)
+# Create a Bokeh Button for geolocation fetching
+loc_button = Button(label="Get Location")
+loc_button.js_on_event("button_click", CustomJS(code="""
+    navigator.geolocation.getCurrentPosition(
+        (loc) => {
+            document.dispatchEvent(new CustomEvent("GET_LOCATION", {detail: {lat: loc.coords.latitude, lon: loc.coords.longitude}}))
+        }
+    )
+    """))
 
-if use_device_location:
-    get_geolocation()
+# Capture the geolocation event using streamlit_bokeh_events
+result = streamlit_bokeh_events(
+    loc_button,
+    events="GET_LOCATION",
+    key="get_location",
+    refresh_on_update=False,
+    override_height=75,
+    debounce_time=0)
 
-    # Once location is fetched, it will be automatically displayed by the JS code
-    lat = st.number_input("Latitude", 35.0, format="%.6f")
-    lon = st.number_input("Longitude", 139.0, format="%.6f")
-    st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
+# Process the event when location is fetched
+if result:
+    if 'GET_LOCATION' in result:
+        location = result['GET_LOCATION']
+        lat = location['lat']
+        lon = location['lon']
+        st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
 else:
     # Manually input the latitude and longitude
     lat = st.number_input("Enter Latitude 📍", value=35.0, format="%.6f")
