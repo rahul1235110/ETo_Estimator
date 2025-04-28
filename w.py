@@ -86,7 +86,7 @@ if st.button('Get My Location'):
     # Run the JavaScript code to get the location
     location = streamlit_js_eval(
         "navigator.geolocation.getCurrentPosition(function(position){ return {latitude: position.coords.latitude, longitude: position.coords.longitude}; });",
-        label="Geolocation Fetcher"  # Add a label to the streamlit_js_eval component
+        label="Geolocation Fetcher"  # This label is required as an argument
     )
 
     if location != "No Location Info":
