@@ -1,9 +1,8 @@
 import streamlit as st
 import requests
 from datetime import datetime
-from bokeh.models.widgets import Button
-from bokeh.models import CustomJS
-from streamlit_bokeh_events import streamlit_bokeh_events
+import math
+from streamlit_geolocation import streamlit_geolocation
 
 # Crop Kc values (for example purposes, you can add more crops and their values)
 kc_values = {
@@ -67,8 +66,12 @@ def jensen_haise_et0(T_max):
     return 0.025 * (T_max + 273 - 2.5)
 
 # Function to calculate AET based on soil moisture and ET₀
-def calculate_aet(et_0, soil_moisture, soil_moisture_max):
-    return et_0 * (soil_moisture / soil_moisture_max)
+def calculate_aet(et_0, soil_moisture, soil_moisture_max, pwp):
+    # If soil moisture is less than PWP, AET is zero
+    if soil_moisture < pwp:
+        return 0
+    else:
+        return et_0 * (soil_moisture / soil_moisture_max)
 
 # Function to calculate irrigation requirement based on Kc value
 def calculate_irrigation_requirement(et_0, kc_value):
@@ -78,36 +81,32 @@ def calculate_irrigation_requirement(et_0, kc_value):
 # Streamlit UI to take latitude and longitude as input
 st.title("🌾 Crop Irrigation and Growth Tracker 🌦️💧")
 
-# Create a Bokeh Button for geolocation fetching
-loc_button = Button(label="Get Location")
-loc_button.js_on_event("button_click", CustomJS(code="""
-    navigator.geolocation.getCurrentPosition(
-        (loc) => {
-            document.dispatchEvent(new CustomEvent("GET_LOCATION", {detail: {lat: loc.coords.latitude, lon: loc.coords.longitude}}))
-        }
-    )
-    """))
+# Option to automatically fetch the location or manually input lat and lon
+use_device_location = st.checkbox("Use my device's location 📍", value=True)
 
-# Capture the geolocation event using streamlit_bokeh_events
-result = streamlit_bokeh_events(
-    loc_button,
-    events="GET_LOCATION",
-    key="get_location",
-    refresh_on_update=False,
-    override_height=75,
-    debounce_time=0)
-
-# Process the event when location is fetched
-if result:
-    if 'GET_LOCATION' in result:
-        location = result['GET_LOCATION']
-        lat = location['lat']
-        lon = location['lon']
+if use_device_location:
+    # Use the streamlit-geolocation package to fetch latitude and longitude
+    location = streamlit_geolocation()
+    
+    if location != "No Location Info":
+        lat = location['latitude']
+        lon = location['longitude']
         st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
+    else:
+        st.warning("❌ Please allow access to your device's location.")
 else:
-    # Manually input the latitude and longitude
+    # Input for Latitude and Longitude if not using device location
     lat = st.number_input("Enter Latitude 📍", value=35.0, format="%.6f")
     lon = st.number_input("Enter Longitude 📍", value=139.0, format="%.6f")
+
+# Input for Max Water Holding Capacity (Field Capacity)
+field_capacity = st.number_input(
+    "💧 Enter Max Water Holding Capacity (Field Capacity) as a fraction (e.g., 0.50 for 50%)",
+    value=0.50,
+    min_value=0.10,
+    max_value=1.0,
+    step=0.01
+)
 
 # Crop Selection
 crop_type = st.selectbox("🌱 Select Crop Type 🌾", ["Cotton", "Redgram", "Wheat", "Rice", "Corn"])
@@ -132,43 +131,50 @@ else:
 
 st.write(f"🌿 **Current Kc Value for {crop_type}**: {kc}")
 
-# Fetch weather and soil data based on user input
-weather_data = fetch_weather_data(lat, lon)
-soil_data = fetch_soil_data(lat, lon)
+# Calculate PWP (Permanent Wilting Point) based on field capacity
+pwp = field_capacity / 2.5
+st.write(f"💧 **Calculated PWP (Permanent Wilting Point)**: {pwp:.2f}")
 
-# Process and display weather data
-if weather_data:
-    st.markdown("### 🌤️ **Weather Forecast Data**:")
-    temp_max = kelvin_to_celsius(weather_data[0]['main']['temp_max'])
+# Run button to trigger the calculations
+if st.button('Run Calculations'):
 
-    # Calculate ET₀ using the Jensen-Haise equation
-    et_0 = jensen_haise_et0(T_max=temp_max)
+    # Fetch weather and soil data based on user input
+    weather_data = fetch_weather_data(lat, lon)
+    soil_data = fetch_soil_data(lat, lon)
 
-    st.markdown(f"🌡️ **Max Temperature (T_max):** {temp_max:.2f} °C")
-    st.markdown(f"🌞 **Estimated ET₀ (from Jensen-Haise Method):** {et_0:.2f} mm/day")
+    # Process and display weather data
+    if weather_data:
+        st.markdown("### 🌤️ **Weather Forecast Data**:")
+        temp_max = kelvin_to_celsius(weather_data[0]['main']['temp_max'])
 
-# Process and display soil data
-if soil_data:
-    st.markdown("### 🌱 **Soil Data**:")
-    soil_moisture = soil_data['moisture']  # Soil moisture from the API (as a fraction)
-    st.markdown(f"💧 **Current Soil Moisture from API**: {soil_moisture * 100:.2f} %")
+        # Calculate ET₀ using the Jensen-Haise equation
+        et_0 = jensen_haise_et0(T_max=temp_max)
 
-    soil_moisture_max = 0.50  # Example max soil moisture (field capacity)
+        st.markdown(f"🌡️ **Max Temperature (T_max):** {temp_max:.2f} °C")
+        st.markdown(f"🌞 **Estimated ET₀ (from Jensen-Haise Method):** {et_0:.2f} mm/day")
 
-    # Calculate AET based on soil moisture and ET₀
-    aet = calculate_aet(et_0, soil_moisture, soil_moisture_max)
-    st.markdown(f"💧 **Estimated AET (Actual Evapotranspiration)**: {aet:.2f} mm/day")
+    # Process and display soil data
+    if soil_data:
+        st.markdown("### 🌱 **Soil Data**:")
+        soil_moisture = soil_data['moisture']  # Soil moisture from the API (as a fraction)
+        st.markdown(f"💧 **Current Soil Moisture from API**: {soil_moisture * 100:.2f} %")
 
-    # Calculate irrigation requirement based on crop stage and Kc value
-    irrigation = calculate_irrigation_requirement(et_0, kc)
-    st.markdown(f"💧 **Recommended Irrigation Requirement for {crop_type}**: {irrigation:.2f} mm/day")
+        soil_moisture_max = 0.50  # Example max soil moisture (field capacity)
 
-    # Now, adjust irrigation recommendation based on soil moisture and rain forecast
-    soil_moisture_example = soil_moisture
-    rain_forecast = 0.0  # mm (from weather forecast API)
+        # Calculate AET based on soil moisture and ET₀
+        aet = calculate_aet(et_0, soil_moisture, soil_moisture_max, pwp)
+        st.markdown(f"💧 **Estimated AET (Actual Evapotranspiration)**: {aet:.2f} mm/day")
 
-    # Adjust irrigation recommendation
-    adjusted_irrigation = irrigation * (1 - soil_moisture_example)  # This accounts for soil moisture already present
-    adjusted_irrigation = adjusted_irrigation - rain_forecast  # Subtract any rainfall expected
+        # Calculate irrigation requirement based on crop stage and Kc value
+        irrigation = calculate_irrigation_requirement(et_0, kc)
+        st.markdown(f"💧 **Recommended Irrigation Requirement for {crop_type}**: {irrigation:.2f} mm/day")
 
-    st.markdown(f"🌧️ **Adjusted Irrigation Requirement (considering soil moisture and rainfall)**: {adjusted_irrigation:.2f} mm/day")
+        # Now, adjust irrigation recommendation based on soil moisture and rain forecast
+        soil_moisture_example = soil_moisture
+        rain_forecast = 0.0  # mm (from weather forecast API)
+
+        # Adjust irrigation recommendation
+        adjusted_irrigation = irrigation * (1 - soil_moisture_example)  # This accounts for soil moisture already present
+        adjusted_irrigation = adjusted_irrigation - rain_forecast  # Subtract any rainfall expected
+
+        st.markdown(f"🌧️ **Adjusted Irrigation Requirement (considering soil moisture and rainfall)**: {adjusted_irrigation:.2f} mm/day")
