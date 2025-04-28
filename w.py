@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 from datetime import datetime, timedelta
 import math
-from streamlit_geolocation import streamlit_geolocation
+#from streamlit_geolocation import streamlit_geolocation
 
 # Crop Kc values (for example purposes, you can add more crops and their values)
 kc_values = {
