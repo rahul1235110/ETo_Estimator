@@ -2,3 +2,4 @@ streamlit==1.16.0
 requests==2.26.0
 bokeh==2.4.3
 streamlit-bokeh-events==0.2.0
+git+https://github.com/steffanic/streamlit-geolocation.git
