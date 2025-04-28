@@ -1,8 +1,6 @@
 import streamlit as st
-import requests
-from datetime import datetime, timedelta
-import math
-from streamlit_geolocation import streamlit_geolocation
+import streamlit.components.v1 as components
+from datetime import datetime
 
 # Crop Kc values (for example purposes, you can add more crops and their values)
 kc_values = {
@@ -74,6 +72,25 @@ def calculate_irrigation_requirement(et_0, kc_value):
     irrigation_requirement = et_0 * kc_value
     return irrigation_requirement
 
+# Custom HTML + JS to fetch geolocation
+def get_geolocation():
+    # HTML + JS code to get geolocation
+    html = """
+    <script type="text/javascript">
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const location = { lat: lat, lon: lon };
+                window.parent.postMessage(location, "*");
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    </script>
+    """
+    components.html(html)
+
 # Streamlit UI to take latitude and longitude as input
 st.title("🌾 Crop Irrigation and Growth Tracker 🌦️💧")
 
@@ -81,17 +98,14 @@ st.title("🌾 Crop Irrigation and Growth Tracker 🌦️💧")
 use_device_location = st.checkbox("Use my device's location 📍", value=True)
 
 if use_device_location:
-    # Use the streamlit-geolocation package to fetch latitude and longitude
-    location = streamlit_geolocation()
-    
-    if location != "No Location Info":
-        lat = location['latitude']
-        lon = location['longitude']
-        st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
-    else:
-        st.warning("❌ Please allow access to your device's location.")
+    get_geolocation()
+
+    # Once location is fetched, it will be automatically displayed by the JS code
+    lat = st.number_input("Latitude", 35.0, format="%.6f")
+    lon = st.number_input("Longitude", 139.0, format="%.6f")
+    st.write(f"📍 Location detected: Latitude = {lat}, Longitude = {lon}")
 else:
-    # Input for Latitude and Longitude if not using device location
+    # Manually input the latitude and longitude
     lat = st.number_input("Enter Latitude 📍", value=35.0, format="%.6f")
     lon = st.number_input("Enter Longitude 📍", value=139.0, format="%.6f")
 
