@@ -1,3 +1,4 @@
+pip==25.1 
 streamlit==1.16.0
 requests==2.26.0
 streamlit-geolocation==0.1.0  # Or the latest version
