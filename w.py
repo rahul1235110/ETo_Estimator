@@ -3,6 +3,7 @@ import requests
 from datetime import datetime, timedelta
 import math
 from streamlit_geolocation import streamlit_geolocation
+
 # Crop Kc values (for example purposes, you can add more crops and their values)
 kc_values = {
     "Cotton": [0.3, 1.15, 0.45],  # [Initial, Mid-Season, Late-Season]
